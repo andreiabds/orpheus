@@ -5,6 +5,7 @@ from bs4 import BeautifulSoup
 import csv, codecs, cStringIO
 import string
 from collections import defaultdict
+import numpy as np
 
 class UTF8Recoder:
     """
@@ -331,11 +332,106 @@ def make_dicts_spotify_albums():
 
 
 
+def cross_match():
+    '''
+    Creates two csv files (spotify_correct_albums, spotify_wrong_albums).
+    First the function checks the title of the spotify album to the most similar title on stlyrics.com.
+    Then, it compares how similar the track names are between spotify and stlyrics.com.
+    If the average similarity is above a certain threshold, we consider the album to be a musical.
+    Else, we consider it to not be a musical.
+
+    Columns on the csv:
+    spotify_id, wikipedia_title, sp_track, track_best_score, st_title, st_track,url
+
+    '''
+    spotify_id_to_musical, spotify_id_to_tracks = make_dicts_spotify_albums()
+    stlyrics_musical_to_tracks = read_stlyrics_tracks_csv()
+
+    with open ('spotify_correct_albums.csv', 'w') as f1:
+        writer_correct = UnicodeWriter(f1)
+        with open ('spotify_wrong_albums.csv', 'w') as f2:
+            writer_wrong = UnicodeWriter(f2)
+
+            header = ['spotify_id', 'wikipedia_title', 'sp_track', 'track_best_score', 'st_title', 'st_track', 'url']
+            writer_correct.writerow(header)
+            writer_wrong.writerow(header)
+            for spotify_id, wikipedia_title in spotify_id_to_musical.iteritems():
+                print wikipedia_title
+
+                spotify_tracks = spotify_id_to_tracks[spotify_id]
+
+                #identifying album stlyrics that I want to compare tracks with
+                best_score, st_title = max([(proximity_score(st_title, wikipedia_title), st_title) for st_title in stlyrics_musical_to_tracks.keys()])
+
+                #tracks from stlyrics
+                st_tracks = stlyrics_musical_to_tracks[st_title]
+
+                scores_tracks =[]
+                for sp_track in spotify_tracks:
+                    track_best_score, st_track =max([(proximity_score(sp_track, st_track), st_track) for st_track in st_tracks])
+                    scores_tracks.append((track_best_score, st_track, sp_track))
+
+
+                spotify_album_score = np.mean([x[0] for x in scores_tracks])
+
+                url = 'to_do'
+                for track_best_score, st_track, sp_track in scores_tracks:
+                    complete_row = [spotify_id, wikipedia_title, sp_track, str(track_best_score),st_title, st_track,url]
+                    threshold = 0.6
+                    if spotify_album_score > threshold:
+                        writer_correct.writerow(complete_row)
+                    else:
+                        writer_wrong.writerow(complete_row)
+                return
+
+
+
+
+
+
+
+
+
+
+
+
+def proximity_score(word1, word2):
+    '''
+    Returns the similarity (0.0 to 1.0) score between two strings.
+
+    INPUT: string, string
+    OUTPUT: float
+    '''
+    ldist = levenshtein(word1,word2)
+
+    similarity = 1.0 - (float(ldist) / max(len(word1), len(word2)))
+    return similarity
+
+
+def levenshtein(s, t):
+        ''' From Wikipedia article; Iterative with two matrix rows. '''
+        if s == t: return 0
+        elif len(s) == 0: return len(t)
+        elif len(t) == 0: return len(s)
+        v0 = [None] * (len(t) + 1)
+        v1 = [None] * (len(t) + 1)
+        for i in range(len(v0)):
+            v0[i] = i
+        for i in range(len(s)):
+            v1[0] = i + 1
+            for j in range(len(t)):
+                cost = 0 if s[i] == t[j] else 1
+                v1[j + 1] = min(v1[j] + 1, v0[j + 1] + 1, v0[j] + cost)
+            for j in range(len(v0)):
+                v0[j] = v1[j]
+
+        return v1[len(t)]
+
 
 
 
 
 
 if __name__ == '__main__':
-    track_from_lyrics_website('lion king')
+    cross_match()
 
