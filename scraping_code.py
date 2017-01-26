@@ -450,16 +450,14 @@ def create_csv_audio_features():
 
     with open ('data/spotify_all_tracks_musicals.csv', 'r') as f_all_tracks:
         reader_track = UnicodeReader(f_all_tracks)
-        with open ('spotify_audio_features.csv', 'w') as f_audio_features:
+        with open ('spotify_audio_features2.csv', 'w') as f_audio_features:
             writer_audio_features = UnicodeWriter(f_audio_features)
             writer_audio_features.writerow(header)
 
             for i, row in enumerate(reader_track):
                 print i, row[2], row[4]
-                if i == 0:
+                if i < 3312:
                     continue
-                if i > 20:
-                    return time.time() - token_time
                 if (time.time() - token_time) > refresh_time:
                     token = get_token()
                     token_time = time.time()
@@ -468,7 +466,7 @@ def create_csv_audio_features():
                 keys = ["danceability", "energy", "key", "loudness","mode", "speechiness",
                         "acousticness", "instrumentalness", "liveness", "valence", "tempo",
                         "duration_ms", "time_signature"]
-                track_features = [str(features[key]) for key in keys]
+                track_features = [str(features.get(key, 'nan')) for key in keys]
                 info = row[0:5]
                 complete_row = info + track_features
                 writer_audio_features.writerow(complete_row)
