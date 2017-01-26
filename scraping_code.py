@@ -101,13 +101,15 @@ def get_track_data(album_id):
     return track_data
 
 
-def get_token(client_id, client_secret):
+def get_token():
     '''
     Returns a token to use Spotify's API.
     It takes the client id and client secret, provided by Spotify Developer once you create an account.
     INPUT: string, string
     OUTPUT: string
     '''
+    client_id = os.environ['SPOTIFY_CLIENT_ID']
+    client_secret = os.environ['SPOTIFY_CLIENT_SECRET']
 
     auth_header = base64.b64encode(client_id + ':' + client_secret)
 
