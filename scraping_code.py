@@ -1,11 +1,14 @@
-import requests
-import urllib2
 import base64
 from bs4 import BeautifulSoup
 import csv, codecs, cStringIO
-import string
 from collections import defaultdict
 import numpy as np
+import os
+import requests
+import string
+import time
+import urllib2
+
 
 class UTF8Recoder:
     """
@@ -355,8 +358,10 @@ def cross_match():
             header = ['spotify_id', 'wikipedia_title', 'sp_track', 'track_best_score', 'st_title', 'st_track', 'url']
             writer_correct.writerow(header)
             writer_wrong.writerow(header)
+            count = 0
             for spotify_id, wikipedia_title in spotify_id_to_musical.iteritems():
-                print wikipedia_title
+                count += 1
+                print count, wikipedia_title
 
                 spotify_tracks = spotify_id_to_tracks[spotify_id]
 
@@ -377,12 +382,12 @@ def cross_match():
                 url = 'to_do'
                 for track_best_score, st_track, sp_track in scores_tracks:
                     complete_row = [spotify_id, wikipedia_title, sp_track, str(track_best_score),st_title, st_track,url]
-                    threshold = 0.6
+                    threshold = 0.5
                     if spotify_album_score > threshold:
                         writer_correct.writerow(complete_row)
                     else:
                         writer_wrong.writerow(complete_row)
-                return
+
 
 
 
@@ -427,11 +432,48 @@ def levenshtein(s, t):
 
         return v1[len(t)]
 
+def create_csv_audio_features():
+    '''
+    Creates a csv file with all audio features from spotify.
+    '''
+    token = get_token()
+    token_time = time.time()
+    refresh_time = 45*60
 
+    keys = ["danceability", "energy", "key", "loudness","mode", "speechiness",
+            "acousticness", "instrumentalness", "liveness", "valence", "tempo",
+            "duration_ms", "time_signature"]
+    header = ["album_id", "wikipedia_album_name", "spotify_album_name", "track_id",
+            "track_name"] + keys
+
+    with open ('data/spotify_all_tracks_musicals.csv', 'r') as f_all_tracks:
+        reader_track = UnicodeReader(f_all_tracks)
+        with open ('spotify_audio_features.csv', 'w') as f_audio_features:
+            writer_audio_features = UnicodeWriter(f_audio_features)
+            writer_audio_features.writerow(header)
+
+            for i, row in enumerate(reader_track):
+                print i, row[2], row[4]
+                if i == 0:
+                    continue
+                if i > 20:
+                    return time.time() - token_time
+                if (time.time() - token_time) > refresh_time:
+                    token = get_token()
+                    token_time = time.time()
+                track_id = row[3]
+                features = get_audio_features(track_id, token)
+                keys = ["danceability", "energy", "key", "loudness","mode", "speechiness",
+                        "acousticness", "instrumentalness", "liveness", "valence", "tempo",
+                        "duration_ms", "time_signature"]
+                track_features = [str(features[key]) for key in keys]
+                info = row[0:5]
+                complete_row = info + track_features
+                writer_audio_features.writerow(complete_row)
 
 
 
 
 if __name__ == '__main__':
-    cross_match()
+    print create_csv_audio_features()
 
