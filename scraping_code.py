@@ -159,18 +159,23 @@ def get_audio_features(track_id, token):
 
     return r.json()
 
-def get_lyrics(musical_title, song_title):
+def get_lyrics(musical_title=None, song_title=None, url=None):
     '''
     Returns the lyrics of a song as a list of lines.
     Searches lyrics on www.stlyrics.com.
     INPUT: string, string
     OUTPUT: list
     '''
+    if not (musical_title and song_title) and not url:
+        return
 
-    clean_musical = musical_title.lower().replace(' ','')
-    clean_song = song_title.lower().replace(' ','')
+    if musical_title and song_title:
+        clean_musical = musical_title.lower().replace(' ','')
+        clean_song = song_title.lower().replace(' ','')
 
-    url = 'https://www.stlyrics.com/lyrics/%s/%s.htm' %(clean_musical, clean_song)
+    if not url:
+        url = 'https://www.stlyrics.com/lyrics/%s/%s.htm' %(clean_musical, clean_song)
+
     soup = BeautifulSoup(urllib2.urlopen(url), 'html.parser')
 
     divs = soup.find("div", {"class": "col-xs-11 main-text"}).findAll('div')
@@ -280,7 +285,7 @@ def tracks_from_lyrics_website(album_name, url=None):
     soup = BeautifulSoup(urllib2.urlopen(url), 'html.parser')
     divs = soup.findAll("div", {"class": "h4"})[:-1]
 
-    track_lst = [div.text[1:]for div in divs]
+    track_lst = [div.text[1:] for div in divs]
 
     return track_lst
 
@@ -393,15 +398,6 @@ def cross_match():
 
 
 
-
-
-
-
-
-
-
-
-
 def proximity_score(word1, word2):
     '''
     Returns the similarity (0.0 to 1.0) score between two strings.
@@ -471,9 +467,65 @@ def create_csv_audio_features():
                 complete_row = info + track_features
                 writer_audio_features.writerow(complete_row)
 
+def musical_labels():
 
+    with open ('musical_labels.csv', 'w') as wiki:
+        writer = UnicodeWriter(wiki)
+        header = ['title', 'year', 'venue', 'music', 'lyrics', 'book', 'notes']
+        writer.writerow(header)
+        for filename in ('lst_musicals%d.htm' % i for i in [1,2]):
+            f = open(filename)
+            html_doc = f.read()
+            soup = BeautifulSoup(html_doc, 'html.parser')
+
+
+            for table in soup.find_all('table'):
+                for tr in table.find_all('tr')[2:]:
+                    lst_row = [td.get_text().split('\n')[0] for td in tr.find_all('td')]
+                    writer.writerow(lst_row)
+
+def musicals_tracks_url_stlyrics():
+    with open ('data/stlyrics_albums.csv', 'r') as f_albums_stlyrics:
+        reader_albums = UnicodeReader(f_albums_stlyrics)
+
+        with open ('stlyrics_musical_tracks_url.csv', 'w') as f_tracks_url:
+            writer_tracks = UnicodeWriter(f_tracks_url)
+
+            header = ['album_name', 'album_url', 'track_name', 'track_url', 'track_lyrics', 'album_type']
+
+            writer_tracks.writerow(header)
+
+            beginning_url = 'http://www.stlyrics.com'
+            for i, row in enumerate(reader_albums):
+                print i
+                if i == 0:
+                    continue
+
+                album_name = row[0]
+                album_url = row[1]
+                album_type = row[2]
+
+                if album_type != 'musical':
+                    continue
+
+                print album_url
+                soup = BeautifulSoup(urllib2.urlopen(album_url), 'html.parser')
+                divs = soup.findAll("div", {"class": "h4"})[:-1]
+
+                for i, div in enumerate(divs):
+                    track_name = div.text[1:]
+                    end_track_url = div.parent.get('href')
+                    if not end_track_url:
+                        track_url = ''
+                        track_lyrics = ''
+                    else:
+                        track_url = beginning_url + end_track_url
+                        track_lyrics =  get_lyrics(url=track_url)
+                        track_lyrics = ' '.join(line.strip() for line in track_lyrics)
+
+                    writer_tracks.writerow([album_name, album_url, track_name, track_url, track_lyrics, album_type])
 
 
 if __name__ == '__main__':
-    print create_csv_audio_features()
+    musicals_tracks_url_stlyrics()
 
