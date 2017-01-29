@@ -282,9 +282,10 @@ def make_dicts_spotify_albums():
         for row in reader:
             album_id = row[0]
             musical_title = row[1]
-            track = row[4]
+            track_name = row[4]
+            track_id = row[3]
             spotify_id_to_name[album_id] = musical_title
-            spotify_albums_dict[album_id].append(track)
+            spotify_albums_dict[album_id].append((track_name,track_id))
 
     return spotify_id_to_name, spotify_albums_dict
 
@@ -305,12 +306,12 @@ def cross_match():
     spotify_id_to_musical, spotify_id_to_tracks = make_dicts_spotify_albums()
     stlyrics_musical_to_tracks = read_stlyrics_tracks_csv()
 
-    with open ('spotify_correct_albums.csv', 'w') as f1:
+    with open ('spotify_correct_albums_IDs.csv', 'w') as f1:
         writer_correct = UnicodeWriter(f1)
-        with open ('spotify_wrong_albums.csv', 'w') as f2:
+        with open ('spotify_wrong_albums_IDs.csv', 'w') as f2:
             writer_wrong = UnicodeWriter(f2)
 
-            header = ['spotify_id', 'wikipedia_title', 'sp_track', 'track_best_score', 'st_title', 'st_track', 'url']
+            header = ['spotify_id', 'wikipedia_title', 'sp_track_id', 'sp_track', 'track_best_score', 'st_title', 'st_track', 'url']
             writer_correct.writerow(header)
             writer_wrong.writerow(header)
             count = 0
@@ -318,7 +319,7 @@ def cross_match():
                 count += 1
                 print count, wikipedia_title
 
-                spotify_tracks = spotify_id_to_tracks[spotify_id]
+                spotify_tracks_names_and_id = spotify_id_to_tracks[spotify_id]
 
                 #identifying album stlyrics that I want to compare tracks with
                 best_score, st_title = max([(proximity_score(st_title, wikipedia_title), st_title) for st_title in stlyrics_musical_to_tracks.keys()])
@@ -327,16 +328,16 @@ def cross_match():
                 st_tracks = stlyrics_musical_to_tracks[st_title]
 
                 scores_tracks =[]
-                for sp_track in spotify_tracks:
+                for sp_track, sp_track_id in spotify_tracks_names_and_id:
                     track_best_score, st_track =max([(proximity_score(sp_track, st_track), st_track) for st_track in st_tracks])
-                    scores_tracks.append((track_best_score, st_track, sp_track))
+                    scores_tracks.append((track_best_score, st_track, sp_track, sp_track_id))
 
 
                 spotify_album_score = np.mean([x[0] for x in scores_tracks])
 
                 url = 'to_do'
-                for track_best_score, st_track, sp_track in scores_tracks:
-                    complete_row = [spotify_id, wikipedia_title, sp_track, str(track_best_score),st_title, st_track,url]
+                for track_best_score, st_track, sp_track, sp_track_id in scores_tracks:
+                    complete_row = [spotify_id, wikipedia_title, sp_track_id, sp_track, str(track_best_score),st_title, st_track,url]
                     threshold = 0.5
                     if spotify_album_score > threshold:
                         writer_correct.writerow(complete_row)
@@ -448,5 +449,5 @@ def musicals_tracks_url_stlyrics():
 
 
 if __name__ == '__main__':
-    musicals_tracks_url_stlyrics()
+    cross_match()
 
