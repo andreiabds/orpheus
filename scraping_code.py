@@ -2,12 +2,14 @@ import base64
 from bs4 import BeautifulSoup
 import csv, codecs, cStringIO
 from collections import defaultdict
+from functools import wraps
 import numpy as np
 import os
 import requests
 import string
 import time
 import urllib2
+
 
 
 class UTF8Recoder:
@@ -71,6 +73,48 @@ class UnicodeWriter:
 
 
 
+
+def retry(ExceptionToCheck, tries=4, delay=3, backoff=2, logger=None):
+    """Retry calling the decorated function using an exponential backoff.
+
+    http://www.saltycrane.com/blog/2009/11/trying-out-retry-decorator-python/
+    original from: http://wiki.python.org/moin/PythonDecoratorLibrary#Retry
+
+    :param ExceptionToCheck: the exception to check. may be a tuple of
+        exceptions to check
+    :type ExceptionToCheck: Exception or tuple
+    :param tries: number of times to try (not retry) before giving up
+    :type tries: int
+    :param delay: initial delay between retries in seconds
+    :type delay: int
+    :param backoff: backoff multiplier e.g. value of 2 will double the delay
+        each retry
+    :type backoff: int
+    :param logger: logger to use. If None, print
+    :type logger: logging.Logger instance
+    """
+    def deco_retry(f):
+
+        @wraps(f)
+        def f_retry(*args, **kwargs):
+            mtries, mdelay = tries, delay
+            while mtries > 1:
+                try:
+                    return f(*args, **kwargs)
+                except ExceptionToCheck, e:
+                    msg = "%s, Retrying in %d seconds..." % (str(e), mdelay)
+                    if logger:
+                        logger.warning(msg)
+                    else:
+                        print msg
+                    time.sleep(mdelay)
+                    mtries -= 1
+                    mdelay *= backoff
+            return f(*args, **kwargs)
+
+        return f_retry  # true decorator
+
+    return deco_retry
 
 def get_album_info(album_name):
     '''
@@ -484,6 +528,12 @@ def musical_labels():
                     lst_row = [td.get_text().split('\n')[0] for td in tr.find_all('td')]
                     writer.writerow(lst_row)
 
+
+
+@retry((urllib2.URLError, urllib2.HTTPError), tries=4, delay=3, backoff=2)
+def urlopen_with_retry(url):
+    return urllib2.urlopen(url)
+
 def musicals_tracks_url_stlyrics():
     with open ('data/stlyrics_albums.csv', 'r') as f_albums_stlyrics:
         reader_albums = UnicodeReader(f_albums_stlyrics)
@@ -495,7 +545,7 @@ def musicals_tracks_url_stlyrics():
 
             writer_tracks.writerow(header)
 
-            beginning_url = 'http://www.stlyrics.com'
+            beginning_url = 'https://www.stlyrics.com'
             for i, row in enumerate(reader_albums):
                 print i
                 if i == 0:
@@ -509,7 +559,11 @@ def musicals_tracks_url_stlyrics():
                     continue
 
                 print album_url
-                soup = BeautifulSoup(urllib2.urlopen(album_url), 'html.parser')
+
+                album_webpage = urlopen_with_retry(album_url)
+
+
+                soup = BeautifulSoup(album_webpage, 'html.parser')
                 divs = soup.findAll("div", {"class": "h4"})[:-1]
 
                 for i, div in enumerate(divs):
