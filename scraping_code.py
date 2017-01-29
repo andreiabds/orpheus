@@ -220,7 +220,15 @@ def get_lyrics(musical_title=None, song_title=None, url=None):
     if not url:
         url = 'https://www.stlyrics.com/lyrics/%s/%s.htm' %(clean_musical, clean_song)
 
-    soup = BeautifulSoup(urllib2.urlopen(url), 'html.parser')
+    print '\t%s' % url
+
+    try:
+        track_webpage = urlopen_with_retry(url)
+    except urllib2.HTTPError:
+        # Not found.
+        return []
+
+    soup = BeautifulSoup(track_webpage, 'html.parser')
 
     divs = soup.find("div", {"class": "col-xs-11 main-text"}).findAll('div')
 
@@ -530,7 +538,7 @@ def musical_labels():
 
 
 
-@retry((urllib2.URLError, urllib2.HTTPError), tries=4, delay=3, backoff=2)
+@retry(urllib2.URLError, tries=3, delay=1, backoff=2)
 def urlopen_with_retry(url):
     return urllib2.urlopen(url)
 
@@ -550,7 +558,6 @@ def musicals_tracks_url_stlyrics():
                 print i
                 if i == 0:
                     continue
-
                 album_name = row[0]
                 album_url = row[1]
                 album_type = row[2]
@@ -559,11 +566,9 @@ def musicals_tracks_url_stlyrics():
                     continue
 
                 print album_url
-
                 album_webpage = urlopen_with_retry(album_url)
-
-
                 soup = BeautifulSoup(album_webpage, 'html.parser')
+                
                 divs = soup.findAll("div", {"class": "h4"})[:-1]
 
                 for i, div in enumerate(divs):
