@@ -2,6 +2,13 @@ import pandas as pd
 import numpy as np
 from tfidf_analysis import tfidf_vectors, name_cleaner
 from data.lyricist_composer_map import lyricist_map, composer_map
+import os.path
+import cPickle
+
+#global constants
+NUM_MUSIC_FEATURES = 14
+composer_dict = composer_map()
+lyricist_dict = lyricist_map()
 
 def create_df_music_features_lyrics_labels():
     '''
@@ -43,14 +50,13 @@ def create_df_music_features_lyrics_labels():
     df3_lyrics = pd.read_csv('stlyrics_musical_tracks_url.csv').dropna()
     df4_wikipedia = pd.read_csv('data/musical_labels.csv')
 
-    # neural_nets_input = no
+
     header = ['sp_track_id', 'wikipedia_title', 'danceability', 'energy','key','loudness',
               'mode','speechiness','acousticness','instrumentalness','liveness','valence',
               'tempo','duration_ms','time_signature', 'year','lyrics', 'composer_label',
               'lyricist_label' ]
     df_music_features_lyrics_labels = pd.DataFrame(columns=header)
-    composer_dict = composer_map()
-    lyricist_dict = lyricist_map()
+
 
     for i, row_correct in df1_correct.iterrows():
 
@@ -60,8 +66,6 @@ def create_df_music_features_lyrics_labels():
         st_title = row_correct['st_title']
         st_track = row_correct['st_track']
 
-        # df1 st_title,st_track
-        # df3 album_name, track name
         row_features = df2_features.loc[df2_features['track_id'] == sp_track_id].iloc[0]
 
         music_features = row_features[5:]
@@ -97,6 +101,64 @@ def create_df_music_features_lyrics_labels():
 
 
     return df_music_features_lyrics_labels
+
+def build_nn_dataset():
+    df = pd.read_csv('COMPLETE_AWESOME_DATA.csv', index_col=0)
+
+    pickle_name = 'tfidf.pkl'
+    if os.path.exists(pickle_name):
+        with open(pickle_name) as f:
+            lyrics_tfidf_vectors = cPickle.load(f)
+    else:
+        with open(pickle_name, 'wb') as f:
+            list_of_lyrics = df['lyrics'].tolist()
+            print 'Computing tfidf... Patience, Little Grasshopper.'
+            lyrics_tfidf_vectors = tfidf_vectors(list_of_lyrics)
+            print 'finished!', lyrics_tfidf_vectors.shape
+            cPickle.dump(lyrics_tfidf_vectors, f)
+
+    lyrics_tfidf_array = lyrics_tfidf_vectors.toarray()
+
+    neural_nets_output = np.zeros((lyrics_tfidf_array.shape[0],len(composer_dict)+ len(lyricist_dict)))
+    neural_nets_input = np.zeros((lyrics_tfidf_array.shape[0], NUM_MUSIC_FEATURES + lyrics_tfidf_array.shape[1]))
+    for i, row in df.iterrows():
+        print i
+        row_lst = row.tolist()
+        fixed_row = []
+        for element in row_lst:
+            if element =='None' or element is None:
+                element = 0
+            fixed_row.append(element)
+        #fixing bad year input on "Charlie Brown" musical
+        fixed_row[-4] = fixed_row[-4].split('/')[0]
+
+        neural_nets_input[i, :NUM_MUSIC_FEATURES] = fixed_row[2 : 2 + NUM_MUSIC_FEATURES]
+        neural_nets_input[i, NUM_MUSIC_FEATURES:] = lyrics_tfidf_array[i]
+        neural_nets_output[i,:] = get_output_vector(row['composer_label'], row['lyricist_label'])
+
+    # with open('dataset.pkl', 'wb') as f2:
+    #     cPickle.dump((neural_nets_input, neural_nets_output), f2)
+
+    return neural_nets_input, neural_nets_output
+
+
+def get_output_vector(composer_string, lyricist_string):
+    len_composer = len(composer_dict)
+    len_lyricist = len(lyricist_dict)
+    lst_composer =[int(composer) for composer in composer_string.split(',')]
+    lst_lyricist = [int(lyricist) for lyricist in lyricist_string.split(',')]
+
+    output_vector = np.zeros(len_composer+len_lyricist)
+    for c in lst_composer:
+        output_vector[c]=1
+    for l in lst_lyricist:
+        output_vector[len_composer + l] = 1
+    return output_vector
+
+
+
+
+
 
 
 

@@ -14,12 +14,15 @@ def fix(s):
 
 
 
-def tfidf_vectors():
+def tfidf_vectors_stlyrics():
     df = pd.read_csv('stlyrics_musical_tracks_url.csv')
     list_of_lyrics = df['track_lyrics'].dropna().tolist()
+    return tfidf_vectors(list_of_lyrics)
 
+
+def tfidf_vectors(list_of_documents):
     clean_list_of_lyrics = ["".join([ch for ch in lyrics if ch not in punctuation])
-                                    for lyrics in list_of_lyrics]
+                                    for lyrics in list_of_documents]
 
     snowball = SnowballStemmer('english')
     docs_snowball = [' '.join([snowball.stem(fix(word)) for word in lyrics.split()])
@@ -30,12 +33,9 @@ def tfidf_vectors():
     tf_idf_vectors = vectorizer.fit_transform(docs_snowball) #scipy.sparse.csr.csr_matrix
     #words = vectorizer.get_feature_names()
 
-    tfidf_array = tf_idf_vectors.toarray()
-
-    return tfidf_array
 
 
-
+    return tf_idf_vectors
 
 def name_cleaner(composer):
     '''
