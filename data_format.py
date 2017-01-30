@@ -122,7 +122,6 @@ def build_nn_dataset():
     neural_nets_output = np.zeros((lyrics_tfidf_array.shape[0],len(composer_dict)+ len(lyricist_dict)))
     neural_nets_input = np.zeros((lyrics_tfidf_array.shape[0], NUM_MUSIC_FEATURES + lyrics_tfidf_array.shape[1]))
     for i, row in df.iterrows():
-        print i
         row_lst = row.tolist()
         fixed_row = []
         for element in row_lst:
