@@ -138,6 +138,9 @@ def build_nn_dataset():
     # with open('dataset.pkl', 'wb') as f2:
     #     cPickle.dump((neural_nets_input, neural_nets_output), f2)
 
+    #excluding song that has nan values
+    neural_nets_input = np.delete(neural_nets_input, 7410, 0)
+    neural_nets_output = np.delete(neural_nets_output, 7410, 0)
     return neural_nets_input, neural_nets_output
 
 
