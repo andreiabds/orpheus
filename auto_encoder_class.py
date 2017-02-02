@@ -37,7 +37,7 @@ class Trainer():
 
 
     def create_model(self, hidden_layers_sizes=[64,32,64], reg=0.001,
-                     dropout=0.5, lr=0.0001):
+                     dropout=0.5, lr=0.001):
         '''
         Creates the architecture of the neural netz.
         Embedding vector is the middle hidden layer.
@@ -45,8 +45,8 @@ class Trainer():
         input, hidden layers and output
         '''
 
-        def relu_6(x):
-            return K.relu(x, max_value=6)
+        # def relu_6(x):
+        #     return K.relu(x, max_value=6)
 
         INPUT_SIZE = self.X_train.shape[1]
         NUM_HIDDEN_LAYERS = len(hidden_layers_sizes)
@@ -56,7 +56,7 @@ class Trainer():
         #model.add(Dense(output_dim=hidden_layers_sizes[0], input_dim=INPUT_SIZE, init='weight_init'))
         model.add(Dense(output_dim=hidden_layers_sizes[0], input_dim=INPUT_SIZE, init='he_normal'))
         model.add(BatchNormalization())
-        model.add(Activation(relu_6))
+        model.add(Activation('relu'))
         model.add(Dropout(dropout))
 
         #hidden layers
@@ -64,7 +64,7 @@ class Trainer():
             #model.add(Dense(output_dim=hidden_layer_size, W_regularizer=l2(reg), init=weight_init))
             model.add(Dense(output_dim=hidden_layer_size, W_regularizer=l2(reg), init='he_normal'))
             model.add(BatchNormalization())
-            model.add(Activation(relu_6))
+            model.add(Activation('relu'))
             model.add(Dropout(dropout))
 
         #output layer
