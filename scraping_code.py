@@ -311,7 +311,8 @@ def cross_match():
         with open ('spotify_wrong_albums_IDs.csv', 'w') as f2:
             writer_wrong = UnicodeWriter(f2)
 
-            header = ['spotify_id', 'wikipedia_title', 'sp_track_id', 'sp_track', 'track_best_score', 'st_title', 'st_track', 'url']
+            header = ['spotify_id', 'wikipedia_title', 'sp_track_id', 'sp_track',
+                        'track_best_score', 'st_title', 'st_track', 'url']
             writer_correct.writerow(header)
             writer_wrong.writerow(header)
             count = 0

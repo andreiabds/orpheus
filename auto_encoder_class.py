@@ -1,3 +1,4 @@
+import cPickle
 from data_format import build_nn_dataset
 import datetime
 from keras import backend as K
@@ -9,6 +10,7 @@ from keras.layers.normalization import BatchNormalization
 from keras.models import Sequential
 from keras.regularizers import l2
 import numpy as np
+import pandas as pd
 import platform
 import os
 
@@ -111,7 +113,10 @@ class Trainer():
         return output_vectors
 
 
-
-
+    def save_matrix(matrix, filename):
+        name = filename+'.pkl'
+        with open(name, 'wb') as f:
+            cPickle.dump(matrix, f)
+        print name, "was saved!"
 
 
